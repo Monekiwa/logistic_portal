@@ -1,11 +1,55 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using LogisticsPortal;
+using LogisticsPortal.Components;
+using LogisticsPortal.Data;
+using LogisticsPortal.Services;
+using LogisticsPortal.State;
+using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+// Add services to the container
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-await builder.Build().RunAsync();
+// Add MudBlazor services
+builder.Services.AddMudServices();
+
+// Add Entity Framework Core with SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? "Data Source=logisticsportal.db";
+
+builder.Services.AddDbContext<LogisticsContext>(options =>
+    options.UseSqlite(connectionString));
+
+// Add application services
+builder.Services.AddScoped<ShipmentService>();
+builder.Services.AddScoped<DriverService>();
+
+// Add state container
+builder.Services.AddScoped<ShipmentState>();
+
+var app = builder.Build();
+
+// Ensure database is created and seeded
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<LogisticsContext>();
+    await dbContext.Database.MigrateAsync();
+    await DbInitializer.InitializeAsync(dbContext);
+}
+
+// Configure the HTTP request pipeline
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+await app.RunAsync();

@@ -1,0 +1,10 @@
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/EmbeddedAttribute.cs
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/ValidatableTypeAttribute.cs
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.csproj.AssemblyReference.cache
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/rpswa.dswa.cache.json
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.GeneratedMSBuildEditorConfig.editorconfig
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.AssemblyInfoInputs.cache
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.AssemblyInfo.cs
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.csproj.CoreCompileInputs.cache
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.MvcApplicationPartsAssemblyInfo.cache
+/Users/anylytical/Desktop/LogisticsPortal/LogisticsPortal/obj/Debug/net10.0/LogisticsPortal.sourcelink.json

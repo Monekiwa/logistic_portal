@@ -1,0 +1,70 @@
+@using LogisticsPortal.Models
+
+<div class="status-badge @GetStatusClass()">
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        @Status.ToString()
+    }
+</div>
+
+@code {
+    [Parameter]
+    public ShipmentStatus Status { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string GetStatusClass() => Status switch
+    {
+        ShipmentStatus.Pending => "badge-pending",
+        ShipmentStatus.InTransit => "badge-in-transit",
+        ShipmentStatus.Delivered => "badge-delivered",
+        ShipmentStatus.Cancelled => "badge-cancelled",
+        _ => "badge-default"
+    };
+}
+
+<style>
+    .status-badge {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: capitalize;
+    }
+
+    .badge-pending {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .badge-in-transit {
+        background-color: #cfe2ff;
+        color: #084298;
+        border: 1px solid #b6d4fe;
+    }
+
+    .badge-delivered {
+        background-color: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
+    }
+
+    .badge-cancelled {
+        background-color: #f8d7da;
+        color: #842029;
+        border: 1px solid #f5c2c7;
+    }
+
+    .badge-default {
+        background-color: #e2e3e5;
+        color: #383d41;
+        border: 1px solid #d3d6d8;
+    }
+</style>

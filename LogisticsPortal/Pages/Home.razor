@@ -1,7 +1,318 @@
 ﻿@page "/"
+@implements IAsyncDisposable
+@inject ShipmentService ShipmentService
+@inject DriverService DriverService
+@inject ShipmentState ShipmentState
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Shipment Dashboard - Logistics Portal</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="mb-4 p-4">
+        <MudText Typo="Typo.h3" Class="mb-4">Shipment Dashboard</MudText>
+        
+        <!-- Summary Bar -->
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Class="summary-card pending">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">Pending</MudText>
+                        <MudText Typo="Typo.h3">@ShipmentState.GetStatusCount(ShipmentStatus.Pending)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Class="summary-card in-transit">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">In-Transit</MudText>
+                        <MudText Typo="Typo.h3">@ShipmentState.GetStatusCount(ShipmentStatus.InTransit)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Class="summary-card delivered">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">Delivered</MudText>
+                        <MudText Typo="Typo.h3">@ShipmentState.GetStatusCount(ShipmentStatus.Delivered)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Class="summary-card cancelled">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">Cancelled</MudText>
+                        <MudText Typo="Typo.h3">@ShipmentState.GetStatusCount(ShipmentStatus.Cancelled)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
-Welcome to your new app.
+    <MudPaper Class="p-4 mb-4">
+        <!-- Filters and Actions -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField 
+                    @bind-Value="filterText" 
+                    Label="Search by Tracking ID or Origin"
+                    Variant="Variant.Outlined"
+                    ValueChanged="@((string? v) => OnFilterTextChanged(v))"
+                    Clearable
+                    Class="w-100" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect 
+                    @bind-Value="selectedStatus" 
+                    Label="Filter by Status"
+                    Variant="Variant.Outlined"
+                    ValueChanged="@((ShipmentStatus? v) => OnStatusFilterChanged(v))"
+                    Clearable
+                    Class="w-100">
+                    <MudSelectItem Value="@((ShipmentStatus?)null)">All Statuses</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.Pending">Pending</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.InTransit">In-Transit</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.Delivered">Delivered</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.Cancelled">Cancelled</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField 
+                    @bind-Value="destinationFilter" 
+                    Label="Filter by Destination"
+                    Variant="Variant.Outlined"
+                    ValueChanged="@((string? v) => OnDestinationFilterChanged(v))"
+                    Clearable
+                    Class="w-100" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudButton 
+                    Variant="Variant.Filled" 
+                    Color="Color.Primary"
+                    FullWidth
+                    @onclick="@((e) => OpenCreateDialog())">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+                    New Shipment
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Shipments Table -->
+        <MudTable Items="filteredShipments" Striped="true" Hoverable="true" Dense="false" Class="w-100">
+            <HeaderContent>
+                <MudTh>Tracking ID</MudTh>
+                <MudTh>Origin</MudTh>
+                <MudTh>Destination</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Driver</MudTh>
+                <MudTh>Est. Delivery</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Tracking ID">
+                    <MudStack Row="true" Spacing="2">
+                        <MudText Typo="Typo.body2">@context.TrackingId</MudText>
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.ContentCopy" 
+                            Size="Size.Small"
+                            Title="Copy Tracking ID"
+                            @onclick="@((e) => CopyTrackingId(context.TrackingId))" />
+                    </MudStack>
+                </MudTd>
+                <MudTd DataLabel="Origin">@context.Origin</MudTd>
+                <MudTd DataLabel="Destination">@context.Destination</MudTd>
+                <MudTd DataLabel="Status">
+                    <StatusBadge Status="@context.Status" />
+                </MudTd>
+                <MudTd DataLabel="Driver">
+                    @if (context.Driver != null)
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Outlined">
+                            @context.Driver.Name
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">Not Assigned</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Est. Delivery">
+                    @context.EstimatedDelivery.ToString("MMM dd, yyyy")
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true">
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.Edit" 
+                            Size="Size.Small"
+                            @onclick="@((e) => OpenEditDialog(context.Id))" />
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.Assignment" 
+                            Size="Size.Small"
+                            Title="Assign Driver"
+                            @onclick="@((e) => OpenAssignDriverDialog(context.Id))" />
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.Info" 
+                            Size="Size.Small"
+                            @onclick="@((e) => OpenDetailsDialog(context.Id))" />
+                        <MudIconButton 
+                            Icon="@Icons.Material.Filled.Delete" 
+                            Size="Size.Small"
+                            Color="Color.Error"
+                            @onclick="@((e) => DeleteShipment(context.Id))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 5, 10, 25, 50 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body1" Class="p-4">No shipments found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string filterText = string.Empty;
+    private ShipmentStatus? selectedStatus = null;
+    private string destinationFilter = string.Empty;
+    private List<Shipment> filteredShipments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ShipmentState.InitializeAsync();
+        ShipmentState.OnStateChanged += UpdateShipments;
+        UpdateShipments();
+    }
+
+    private void UpdateShipments()
+    {
+        filteredShipments = ShipmentState.GetFilteredShipments();
+        StateHasChanged();
+    }
+
+    private void OnFilterTextChanged(string? value)
+    {
+        filterText = value ?? string.Empty;
+        ShipmentState.SetFilterText(filterText);
+    }
+
+    private void OnStatusFilterChanged(ShipmentStatus? value)
+    {
+        selectedStatus = value;
+        ShipmentState.SetStatusFilter(value);
+    }
+
+    private void OnDestinationFilterChanged(string? value)
+    {
+        destinationFilter = value ?? string.Empty;
+        ShipmentState.SetDestinationFilter(destinationFilter);
+    }
+
+    private async Task CopyTrackingId(string trackingId)
+    {
+        Snackbar.Add($"Tracking ID '{trackingId}' copied to clipboard", MudBlazor.Severity.Success);
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CreateShipmentDialog>("Create New Shipment");
+        var result = await dialog.Result;
+        
+        if (!result!.Canceled)
+        {
+            await ShipmentState.RefreshShipmentsAsync();
+            await ShipmentState.RefreshStatusCountsAsync();
+            Snackbar.Add("Shipment created successfully", MudBlazor.Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(int shipmentId)
+    {
+        var dialog = await DialogService.ShowAsync<EditShipmentDialog>("Edit Shipment", 
+            new DialogParameters { { "ShipmentId", shipmentId } });
+        var result = await dialog.Result;
+        
+        if (!result!.Canceled)
+        {
+            await ShipmentState.RefreshShipmentsAsync();
+            await ShipmentState.RefreshStatusCountsAsync();
+            Snackbar.Add("Shipment updated successfully", MudBlazor.Severity.Success);
+        }
+    }
+
+    private async Task OpenDetailsDialog(int shipmentId)
+    {
+        var dialog = await DialogService.ShowAsync<ShipmentDetailsDialog>("Shipment Details",
+            new DialogParameters { { "ShipmentId", shipmentId } });
+        await dialog.Result;
+    }
+
+    private async Task OpenAssignDriverDialog(int shipmentId)
+    {
+        var dialog = await DialogService.ShowAsync<AssignDriverDialog>("Assign Driver",
+            new DialogParameters { { "ShipmentId", shipmentId } });
+        var result = await dialog.Result;
+        
+        if (!result!.Canceled)
+        {
+            await ShipmentState.RefreshShipmentsAsync();
+            Snackbar.Add("Driver assigned successfully", MudBlazor.Severity.Success);
+        }
+    }
+
+    private async Task DeleteShipment(int shipmentId)
+    {
+        var confirm = await DialogService.ShowAsync<ConfirmDialog>("Delete Shipment", 
+            new DialogParameters { { "Message", "Are you sure you want to delete this shipment?" } });
+        var result = await confirm.Result;
+
+        if (!result!.Canceled)
+        {
+            try
+            {
+                await ShipmentService.DeleteShipmentAsync(shipmentId);
+                await ShipmentState.RefreshShipmentsAsync();
+                await ShipmentState.RefreshStatusCountsAsync();
+                Snackbar.Add("Shipment deleted successfully", MudBlazor.Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting shipment: {ex.Message}", MudBlazor.Severity.Error);
+            }
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        ShipmentState.OnStateChanged -= UpdateShipments;
+    }
+}
+
+<style>
+    .summary-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .summary-card.pending {
+        border-left: 5px solid #ffc107;
+    }
+
+    .summary-card.in-transit {
+        border-left: 5px solid #0d6efd;
+    }
+
+    .summary-card.delivered {
+        border-left: 5px solid #198754;
+    }
+
+    .summary-card.cancelled {
+        border-left: 5px solid #dc3545;
+    }
+</style>

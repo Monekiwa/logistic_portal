@@ -1,0 +1,129 @@
+@inject ShipmentService ShipmentService
+@inject DriverService DriverService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (shipment == null || drivers == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudText Typo="Typo.h6" Class="mb-4">
+                Assign Driver for Shipment @shipment.TrackingId
+            </MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-4">
+                <strong>Origin:</strong> @shipment.Origin | <strong>Destination:</strong> @shipment.Destination
+            </MudText>
+
+            @if (shipment.Driver != null)
+            {
+                <MudAlert Severity="MudBlazor.Severity.Info" Class="mb-4">
+                    Currently assigned to: <strong>@shipment.Driver.Name</strong>
+                </MudAlert>
+            }
+
+            <MudSelect 
+                @bind-Value="selectedDriverId"
+                Label="Select Driver"
+                Variant="Variant.Outlined"
+                AnchorOrigin="Origin.BottomCenter"
+                Class="w-100">
+                <MudSelectItem Value="@((int?)null)">-- Unassigned --</MudSelectItem>
+                @foreach (var driver in drivers)
+                {
+                    <MudSelectItem Value="@driver.Id">
+                        @driver.Name
+                        @if (driver.IsAvailable)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small" />
+                        }
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (selectedDriverId.HasValue && selectedDriverId.Value > 0)
+            {
+                var selectedDriver = drivers.FirstOrDefault(d => d.Id == selectedDriverId.Value);
+                @if (selectedDriver != null)
+                {
+                    <MudPaper Class="p-3 mt-4">
+                        <MudText Typo="Typo.h6">@selectedDriver.Name</MudText>
+                        <MudText Typo="Typo.body2">
+                            <strong>License:</strong> @selectedDriver.License<br />
+                            <strong>Phone:</strong> @selectedDriver.PhoneNumber<br />
+                            @if (!string.IsNullOrEmpty(selectedDriver.Email))
+                            {
+                                <text><strong>Email:</strong> @selectedDriver.Email</text>
+                            }
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton 
+            Color="Color.Primary" 
+            OnClick="AssignDriver"
+            Disabled="shipment == null">
+            Assign Driver
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int ShipmentId { get; set; }
+
+    private Shipment? shipment;
+    private List<Driver>? drivers;
+    private int? selectedDriverId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        shipment = await ShipmentService.GetShipmentByIdAsync(ShipmentId);
+        drivers = await DriverService.GetAllDriversAsync();
+        
+        if (shipment?.Driver != null)
+        {
+            selectedDriverId = shipment.Driver.Id;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task AssignDriver()
+    {
+        if (shipment == null) return;
+
+        try
+        {
+            if (selectedDriverId.HasValue && selectedDriverId.Value > 0)
+            {
+                await ShipmentService.AssignDriverAsync(ShipmentId, selectedDriverId.Value);
+                Snackbar.Add("Driver assigned successfully", MudBlazor.Severity.Success);
+            }
+            else
+            {
+                // Unassign driver by setting DriverId to null
+                shipment.DriverId = null;
+                await ShipmentService.UpdateShipmentAsync(shipment);
+                Snackbar.Add("Driver unassigned", MudBlazor.Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning driver: {ex.Message}", MudBlazor.Severity.Error);
+        }
+    }
+}

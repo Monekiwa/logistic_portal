@@ -1,0 +1,84 @@
+@using System.ComponentModel.DataAnnotations
+@inject ShipmentService ShipmentService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (shipment == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <EditForm Model="shipment" OnValidSubmit="Submit">
+                <DataAnnotationsValidator />
+
+                <MudTextField 
+                    @bind-Value="shipment.Origin"
+                    Label="Origin"
+                    Variant="Variant.Outlined"
+                    Class="mb-3"/>
+
+                <MudTextField 
+                    @bind-Value="shipment.Destination"
+                    Label="Destination"
+                    Variant="Variant.Outlined"
+                    Class="mb-3"/>
+
+                <MudDatePicker 
+                    @bind-Date="shipment.EstimatedDelivery"
+                    Label="Estimated Delivery"
+                    Variant="Variant.Outlined"
+                    MinDate="DateTime.UtcNow"
+                    Class="mb-3"/>
+
+
+                <MudSelect 
+                    @bind-Value="shipment.Status"
+                    Label="Status"
+                    Variant="Variant.Outlined"
+                    Class="mb-3">
+                    <MudSelectItem Value="ShipmentStatus.Pending">Pending</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.InTransit">In-Transit</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.Delivered">Delivered</MudSelectItem>
+                    <MudSelectItem Value="ShipmentStatus.Cancelled">Cancelled</MudSelectItem>
+                </MudSelect>
+
+                <MudButton 
+                    ButtonType="ButtonType.Submit"
+                    Color="Color.Primary"
+                    FullWidth
+                    Variant="Variant.Filled">
+                    Save Changes
+                </MudButton>
+            </EditForm>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int ShipmentId { get; set; }
+
+    private Shipment? shipment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        shipment = await ShipmentService.GetShipmentByIdAsync(ShipmentId);
+    }
+
+    private async Task Submit()
+    {
+        if (shipment == null) return;
+
+        try
+        {
+            await ShipmentService.UpdateShipmentAsync(shipment);
+            MudDialog.Close(DialogResult.Ok(shipment));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating shipment: {ex.Message}", MudBlazor.Severity.Error);
+        }
+    }
+}

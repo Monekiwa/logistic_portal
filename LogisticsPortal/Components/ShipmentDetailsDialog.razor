@@ -1,0 +1,130 @@
+@inject ShipmentService ShipmentService
+
+<MudDialog>
+    <DialogContent>
+        @if (shipment == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" sm="6">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Tracking ID</MudText>
+                                        <MudText Typo="Typo.body1">@shipment.TrackingId</MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Status</MudText>
+                                        <StatusBadge Status="@shipment.Status" />
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Origin</MudText>
+                                        <MudText Typo="Typo.body1">@shipment.Origin</MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Destination</MudText>
+                                        <MudText Typo="Typo.body1">@shipment.Destination</MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Estimated Delivery</MudText>
+                                        <MudText Typo="Typo.body1">@shipment.EstimatedDelivery.ToString("MMM dd, yyyy")</MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Driver</MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @if (shipment.Driver != null)
+                                            {
+                                                <span>@shipment.Driver.Name</span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color: #999;">Not Assigned</span>
+                                            }
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">Created</MudText>
+                                        <MudText Typo="Typo.body1">@shipment.CreatedAt.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                    </div>
+                                </MudItem>
+                                @if (shipment.UpdatedAt.HasValue)
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div>
+                                            <MudText Typo="Typo.caption" Color="Color.Tertiary">Last Updated</MudText>
+                                            <MudText Typo="Typo.body1">@shipment.UpdatedAt.Value.ToString("MMM dd, yyyy HH:mm")</MudText>
+                                        </div>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <!-- Audit Log -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Audit Log</MudText>
+                    <MudPaper Class="p-3">
+                        @if (auditLogs.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Tertiary">No audit logs available.</MudText>
+                        }
+                        else
+                        {
+                            <MudTimeline>
+                                @foreach (var log in auditLogs)
+                                {
+                                    <MudTimelineItem Color="Color.Primary">
+                                        <MudText Typo="Typo.body2">@log.Action</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                            @log.Timestamp.ToString("MMM dd, yyyy HH:mm:ss")
+                                        </MudText>
+                                    </MudTimelineItem>
+                                }
+                            </MudTimeline>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int ShipmentId { get; set; }
+
+    private Shipment? shipment;
+    private List<AuditLog> auditLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        shipment = await ShipmentService.GetShipmentByIdAsync(ShipmentId);
+        if (shipment != null)
+        {
+            auditLogs = await ShipmentService.GetAuditLogsAsync(ShipmentId);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

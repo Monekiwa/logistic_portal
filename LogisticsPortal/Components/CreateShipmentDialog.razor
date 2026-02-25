@@ -1,0 +1,100 @@
+@using System.ComponentModel.DataAnnotations
+@inject ShipmentService ShipmentService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="model" OnValidSubmit="Submit">
+            <DataAnnotationsValidator />
+            
+            <MudTextField 
+                @bind-Value="model.TrackingId"
+                For="@(() => model.TrackingId)"
+                Label="Tracking ID"
+                Variant="Variant.Outlined"
+                Placeholder="E.g., SHIP001"
+                Class="mb-3"/>
+
+            <MudTextField 
+                @bind-Value="model.Origin"
+                For="@(() => model.Origin)"
+                Label="Origin"
+                Variant="Variant.Outlined"
+                Placeholder="E.g., New York, NY"
+                Class="mb-3"/>
+
+            <MudTextField 
+                @bind-Value="model.Destination"
+                For="@(() => model.Destination)"
+                Label="Destination"
+                Variant="Variant.Outlined"
+                Placeholder="E.g., Los Angeles, CA"
+                Class="mb-3"/>
+
+            <MudDatePicker 
+                @bind-Date="model.EstimatedDelivery"
+                Label="Estimated Delivery"
+                Variant="Variant.Outlined"
+                MinDate="DateTime.UtcNow.AddDays(1)"
+                Class="mb-3"/>
+
+            <MudButton 
+                ButtonType="ButtonType.Submit"
+                Color="Color.Primary"
+                FullWidth
+                Variant="Variant.Filled">
+                Create Shipment
+            </MudButton>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    
+    private CreateShipmentModel model = new();
+
+    private async Task Submit()
+    {
+        try
+        {
+            var shipment = new Shipment
+            {
+                TrackingId = model.TrackingId,
+                Origin = model.Origin,
+                Destination = model.Destination,
+                EstimatedDelivery = model.EstimatedDelivery ?? DateTime.UtcNow.AddDays(7),
+                Status = ShipmentStatus.Pending
+            };
+
+            await ShipmentService.CreateShipmentAsync(shipment);
+            MudDialog.Close(DialogResult.Ok(shipment));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating shipment: {ex.Message}", MudBlazor.Severity.Error);
+        }
+    }
+
+    [System.ComponentModel.DataAnnotations.MetadataType(typeof(CreateShipmentMetadata))]
+    private class CreateShipmentModel
+    {
+        [Required(ErrorMessage = "Tracking ID is required")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Tracking ID must be between 3 and 50 characters")]
+        public string TrackingId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Origin is required")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "Origin must be between 2 and 200 characters")]
+        public string Origin { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Destination is required")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "Destination must be between 2 and 200 characters")]
+        public string Destination { get; set; } = string.Empty;
+
+        public DateTime? EstimatedDelivery { get; set; }
+    }
+
+    private class CreateShipmentMetadata
+    {
+    }
+}
